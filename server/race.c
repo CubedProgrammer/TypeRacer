@@ -51,6 +51,7 @@ int racetrack_insert(uint32_t num)
             tr_racetrack_htable.buckets[h].cnt = 0;
             tr_racetrack_htable.buckets[h].cap = DEFAULT_CAP;
             tr_racetrack_htable.buckets[h].racers = malloc(sizeof(*tr_racetrack_htable.buckets[h].racers) * DEFAULT_CAP);
+            tr_racetrack_htable.buckets[h].status = 3;
             if(tr_racetrack_htable.buckets[h].racers == NULL)
             {
                 tr_racetrack_htable.buckets[h].cap = 0;

@@ -37,7 +37,13 @@ void *handle_client(void *arg)
     log_printf("Player %s has connected\n", name);
     uint32_t track;
     GETCHR(cfd, track);
+    time_t currt;
+    char msgt;
     int succ;
+    uint16_t prog;
+    fd_set fds, *fdsp = &fds;
+    struct timeval tv;
+    int ready;
     if(track == 0)
     {
     }
@@ -47,9 +53,93 @@ void *handle_client(void *arg)
         succ = racetrack_join(track, cfd, name);
         if(succ == 0)
         {
+            struct racetrack *race = racetrack_get(track);
+            struct racer *player = race->racers + race->cnt - 1;
+            if(race->status == 3)
+                msgt = 19;
+            else
+                msgt = 17;
+            PUTCHR(cfd, msgt);
+            if(msgt == 19)
+            {
+                while(race->status == 3)
+                {
+                    GETCHR(cfd, msgt);
+                    if(player == race->racers)
+                    {
+                        if(msgt == 19)
+                        {
+                            currt = time(NULL);
+                            race->end = currt + 63;
+                            for(size_t i = 0; i < race->cnt; ++i)
+                                PUTCHR(cfd, msgt);
+                            usleep(3000000);
+                            /*for(size_t i = 0; i < race->cnt; ++i)
+                            {
+                                msgt = strlen(race->racers[i].name);
+                                PUTCHR(cfd, msgt);
+                                write(cfd, race->racers[i].name, msgt);
+                            }*/
+                            msgt = 19;
+                            for(size_t i = 0; i < race->cnt; ++i)
+                                PUTCHR(cfd, msgt);
+                            race->status = 4;
+                        }
+                        else
+                        {
+                            race->status = 5;
+                            msgt = 31;
+                        }
+                    }
+                }
+                if(msgt == 19)
+                {
+                    currt = time(NULL);
+                    while(currt < race->end)
+                    {
+                        tv.tv_sec = 1;
+                        tv.tv_usec = 0;
+                        FD_ZERO(fdsp);
+                        FD_SET(cfd, fdsp);
+                        ready = select(cfd + 1, fdsp, NULL, NULL, &tv);
+                        if(ready)
+                            GETCHR(cfd, msgt);
+                        else
+                            msgt = 97;
+                        if(msgt == 31)
+                            currt = race->end;
+                        else
+                        {
+                            if(msgt == 23)
+                            {
+                                if(player->progress < race->goal)
+                                    ++player->progress;
+                            }
+                            msgt = 29;
+                            PUTCHR(cfd, msgt);
+                            for(size_t i = 0; i < race->cnt; ++i)
+                            {
+                                prog = race->racers[i].progress;
+                                prog = htons(prog);
+                                PUTCHR(cfd, prog);
+                            }
+                            time(&currt);
+                        }
+                    }
+                }
+                else
+                {
+                    msgt = 31;
+                    PUTCHR(cfd, msgt);
+                }
+            }
         }
         else
+        {
+            msgt = 13;
+            PUTCHR(cfd, msgt);
             log_printf("Player %s could not join room %u\n", name, track);
+        }
     }
     return NULL;
 }
