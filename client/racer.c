@@ -8,6 +8,11 @@
 #include<unistd.h>
 #define ring putchar('\a')
 #define PORT 6971
+#ifdef _WIN32
+#define gch getch()
+#else
+#define gch getchar()
+#endif
 int rd(void);
 void rdln(char *buf, size_t bufsz)
 {
@@ -25,6 +30,43 @@ void rdln(char *buf, size_t bufsz)
                     --ind;
                     --sz;
                     putchar('\b');
+                }
+                else
+                    ring;
+                break;
+            case 0x5b44:
+                if(ind > 0)
+                {
+                    putchar('\b');
+                    --ind;
+                }
+                else
+                    ring;
+                break;
+            case 0x5b43:
+                if(ind < sz)
+                {
+                    fputs("\033\133C", stdout);
+                    ++ind;
+                }
+                else
+                    ring;
+                break;
+            case 0x5b46:
+                if(ind < sz)
+                    printf("\033\133%zuC", sz - ind);
+                ind = sz;
+                break;
+            case 0x5b48:
+                if(ind > 0)
+                    printf("\033\133%zuD", ind);
+                ind = 0;
+                break;
+            case 0x5b337e:
+                if(ind < sz)
+                {
+                    memmove(buf + ind, buf + ind + 1, sz - ind - 1);
+                    --sz;
                 }
                 else
                     ring;
@@ -88,5 +130,22 @@ int main(int argl, char *argv[])
 }
 int rd(void)
 {
-    return getchar();
+    int ch;
+    char cbuf[4];
+#ifdef _WIN32
+#else
+    int bc = read(STDIN_FILENO, cbuf, sizeof cbuf);
+    if(cbuf[0] == 033)
+    {
+        ch = 0;
+        for(int i = 1; i < bc; i++)
+        {
+            ch <<= 8;
+            ch += cbuf[i];
+        }
+    }
+    else
+        ch = cbuf[0];
+#endif
+    return ch;
 }
