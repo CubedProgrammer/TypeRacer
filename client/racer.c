@@ -13,6 +13,9 @@
 #else
 #define gch getchar()
 #endif
+char rdcbuf[4];
+int rdcbufcnt;
+int connect_client(const char *host);
 int rd(void);
 void rdln(char *buf, size_t bufsz)
 {
@@ -117,16 +120,36 @@ int main(int argl, char *argv[])
     const char *host = argv[1];
     if(host == NULL)
     {
-        fputs("Enter host name of server you wish to connect to: ", stdout);
+        char conmsg[] = "Enter host name of server you wish to connect to: ";
+        fputs(conmsg, stdout);
         char hbuf[121];
-        rdln(hbuf, sizeof hbuf);
-        puts(hbuf);
+        int sock = -1;
+        while(sock == -1)
+        {
+            rdln(hbuf, sizeof hbuf);
+            host = hbuf;
+            if(sock == -1)
+                printf("\n\033\13331mCould not connect, put in a different host name, check spelling.\033\133F\033\133%zuC\033\133m", sizeof(conmsg) - 1);
+        }
         host = hbuf;
+        puts(host);
     }
 #ifndef _WIN32
     tcsetattr(STDIN_FILENO, TCSANOW, &old);
 #endif
     return 0;
+}
+int connect_client(const char *host)
+{
+    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    if(sock > 0)
+    {
+        struct sockaddr_in sai, *saip = &sai;
+        sai.sin_family = AF_INET;
+        sai.sin_port = htons(PORT);
+        sock = -1;
+    }
+    return sock;
 }
 int rd(void)
 {
@@ -134,18 +157,35 @@ int rd(void)
     char cbuf[4];
 #ifdef _WIN32
 #else
-    int bc = read(STDIN_FILENO, cbuf, sizeof cbuf);
-    if(cbuf[0] == 033)
+    if(rdcbufcnt != 0)
     {
-        ch = 0;
-        for(int i = 1; i < bc; i++)
-        {
-            ch <<= 8;
-            ch += cbuf[i];
-        }
+        ch = rdcbuf[0];
+        rdcbuf[0] = rdcbuf[1];
+        rdcbuf[1] = rdcbuf[2];
+        rdcbuf[2] = rdcbuf[3];
+        --rdcbufcnt;
     }
     else
-        ch = cbuf[0];
+    {
+        int bc = read(STDIN_FILENO, cbuf, sizeof cbuf);
+        if(bc == 1)
+            ch = cbuf[0];
+        else if(cbuf[0] == 033)
+        {
+            ch = 0;
+            for(int i = 1; i < bc; i++)
+            {
+                ch <<= 8;
+                ch += cbuf[i];
+            }
+        }
+        else
+        {
+            ch = cbuf[0];
+            memcpy(rdcbuf, cbuf + 1, bc - 1);
+            rdcbufcnt = bc - 1;
+        }
+    }
 #endif
     return ch;
 }
