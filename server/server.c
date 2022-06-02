@@ -9,11 +9,13 @@
 #include"logging.h"
 #include"race.h"
 #define PORT 6971
+#define SLOPE 25214903917
 #ifndef LOGFILE
 #define LOGFILE "logs.txt"
 #endif
 #define GETCHR(filedes, var)read(filedes, &var, sizeof var)
 #define PUTCHR(filedes, var)write(filedes, &var, sizeof var)
+uint64_t java_util_Random_seed;
 union sockaddru
 {
     struct sockaddr_in sai;
@@ -24,6 +26,7 @@ struct accept_client_arg
     union sockaddru sau;
     socklen_t slen;
 };
+uint32_t nextui(void);
 void *handle_client(void *arg)
 {
     int cfd = *(int*)arg;
@@ -46,10 +49,20 @@ void *handle_client(void *arg)
     int ready;
     if(track == 0)
     {
+        track = nextui();
+        succ = racetrack_insert(track);
+        if(succ == 0)
+            goto joinrace;
+        else
+        {
+            msgt = 31;
+            PUTCHR(cfd, msgt);
+        }
     }
     else
     {
         track = ntohl(track);
+        joinrace:
         succ = racetrack_join(track, cfd, name);
         if(succ == 0)
         {
@@ -62,6 +75,18 @@ void *handle_client(void *arg)
             PUTCHR(cfd, msgt);
             if(msgt == 19)
             {
+                for(size_t i = 0; i < race->cnt; ++i)
+                {
+                    msgt = 37;
+                    PUTCHR(race->racers[i].cli, msgt);
+                    PUTCHR(cfd, msgt);
+                    msgt = strlen(player->name);
+                    PUTCHR(race->racers[i].cli, msgt);
+                    write(race->racers[i].cli, player->name, msgt);
+                    msgt = strlen(race->racers[i].name);
+                    PUTCHR(cfd, msgt);
+                    write(cfd, race->racers[i].name, msgt);
+                }
                 while(race->status == 3)
                 {
                     GETCHR(cfd, msgt);
@@ -74,12 +99,6 @@ void *handle_client(void *arg)
                             for(size_t i = 0; i < race->cnt; ++i)
                                 PUTCHR(cfd, msgt);
                             usleep(3000000);
-                            /*for(size_t i = 0; i < race->cnt; ++i)
-                            {
-                                msgt = strlen(race->racers[i].name);
-                                PUTCHR(cfd, msgt);
-                                write(cfd, race->racers[i].name, msgt);
-                            }*/
                             msgt = 19;
                             for(size_t i = 0; i < race->cnt; ++i)
                                 PUTCHR(cfd, msgt);
@@ -141,6 +160,7 @@ void *handle_client(void *arg)
             log_printf("Player %s could not join room %u\n", name, track);
         }
     }
+    close(cfd);
     return NULL;
 }
 void *accept_clients(void *arg)
@@ -180,6 +200,7 @@ void *accept_clients(void *arg)
 int main(int argl, char *argv[])
 {
     puts("TypeRacer");
+    java_util_Random_seed = time(NULL);
     int succ = init_logger(LOGFILE);
     if(succ == 0)
     {
@@ -194,4 +215,11 @@ int main(int argl, char *argv[])
         end_logging();
     }
     return succ;
+}
+uint32_t nextui(void)
+{
+    java_util_Random_seed *= SLOPE;
+    java_util_Random_seed += 11;
+    java_util_Random_seed &= 07777777777777777ul;
+    return java_util_Random_seed;
 }
