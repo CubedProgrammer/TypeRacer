@@ -11,7 +11,8 @@
 #ifdef _WIN32
 #define gch getch()
 #else
-#define gch getchar()
+#define GETCHR(filedes, var)read(filedes, &var, sizeof var)
+#define PUTCHR(filedes, var)write(filedes, &var, sizeof var)
 #endif
 char rdcbuf[4];
 int rdcbufcnt;
@@ -128,11 +129,43 @@ int main(int argl, char *argv[])
         {
             rdln(hbuf, sizeof hbuf);
             host = hbuf;
+            sock = connect_client(host);
             if(sock == -1)
                 printf("\n\033\13331mCould not connect, put in a different host name, check spelling.\033\133F\033\133%zuC\033\133m", sizeof(conmsg) - 1);
         }
-        host = hbuf;
         puts(host);
+        char name[60], oname[60];
+        fputs("Enter your name: ", stdout);
+        rdln(name, sizeof name);
+        char msgt = strlen(name);
+        PUTCHR(sock, msgt);
+        write(sock, name, msgt);
+        uint32_t trackn = 0;
+        PUTCHR(sock, trackn);
+        GETCHR(sock, msgt);
+        if(msgt == 19)
+        {
+            GETCHR(sock, msgt);
+            while(msgt == 31 && msgt != 19)
+            {
+                if(msgt == 37)
+                {
+                    GETCHR(sock, msgt);
+                    read(sock, oname, msgt);
+                    oname[msgt] = '\0';
+                    printf("%s has entered the race.\n", oname);
+                }
+                GETCHR(sock, msgt);
+            }
+            if(msgt == 31)
+                close(sock);
+            else
+            {
+                fputs("Game is beginning in 3", stdout);
+            }
+        }
+        else
+            puts("Failed to enter room");
     }
 #ifndef _WIN32
     tcsetattr(STDIN_FILENO, TCSANOW, &old);
@@ -147,7 +180,13 @@ int connect_client(const char *host)
         struct sockaddr_in sai, *saip = &sai;
         sai.sin_family = AF_INET;
         sai.sin_port = htons(PORT);
-        sock = -1;
+        inet_aton(host, &sai.sin_addr);
+        int succ = connect(sock, (struct sockaddr *)saip, sizeof sai);
+        if(succ != 0)
+            sock = -1;
+        else
+        {
+        }
     }
     return sock;
 }

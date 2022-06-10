@@ -11,6 +11,13 @@ size_t racetrack_hash(uint32_t num)
 int racetrack_init(void)
 {
     int succ = 0;
+    tr_racetrack_htable.cnt = 0;
+    tr_racetrack_htable.bcnt = DEFAULT_CAP;
+    tr_racetrack_htable.buckets = malloc(sizeof(*tr_racetrack_htable.buckets) * DEFAULT_CAP);
+    if(tr_racetrack_htable.buckets == NULL)
+        succ = -1;
+    else
+        memset(tr_racetrack_htable.buckets, 0, sizeof(*tr_racetrack_htable.buckets) * tr_racetrack_htable.bcnt);
     return succ;
 }
 int racetrack_insert(uint32_t num)

@@ -55,6 +55,7 @@ void *handle_client(void *arg)
             goto joinrace;
         else
         {
+            log_printf("Track 0x%x could not be created.\n", track);
             msgt = 31;
             PUTCHR(cfd, msgt);
         }
@@ -201,7 +202,7 @@ int main(int argl, char *argv[])
 {
     puts("TypeRacer");
     java_util_Random_seed = time(NULL);
-    int succ = init_logger(LOGFILE);
+    int succ = init_logger(LOGFILE) + racetrack_init();
     if(succ == 0)
     {
         union sockaddru sau;
