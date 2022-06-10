@@ -10,9 +10,11 @@
 #define PORT 6971
 #ifdef _WIN32
 #define gch getch()
+#define mssleep(ms)Sleep(ms)
 #else
 #define GETCHR(filedes, var)read(filedes, &var, sizeof var)
 #define PUTCHR(filedes, var)write(filedes, &var, sizeof var)
+#define mssleep(ms)usleep((ms) * 1000)
 #endif
 char rdcbuf[4];
 int rdcbufcnt;
@@ -104,6 +106,9 @@ void rdln(char *buf, size_t bufsz)
         ch = rd();
     }
     printf("\033\133%zuD", ind);
+    for(size_t i = 0; i < sz; i++)
+        putchar(' ');
+    printf("\033\133%zuD", sz);
     buf[sz] = '\0';
 }
 int main(int argl, char *argv[])
@@ -131,12 +136,13 @@ int main(int argl, char *argv[])
             host = hbuf;
             sock = connect_client(host);
             if(sock == -1)
-                printf("\n\033\13331mCould not connect, put in a different host name, check spelling.\033\133F\033\133%zuC\033\133m", sizeof(conmsg) - 1);
+                printf("\033\133F\033\13331mCould not connect, put in a different host name, check spelling.\n\033\133%zuC\033\133m", sizeof(conmsg) - 1);
         }
         puts(host);
         char name[60], oname[60];
         fputs("Enter your name: ", stdout);
         rdln(name, sizeof name);
+        printf("\n Your name is %s.\n", name);
         char msgt = strlen(name);
         PUTCHR(sock, msgt);
         write(sock, name, msgt);
@@ -146,7 +152,7 @@ int main(int argl, char *argv[])
         if(msgt == 19)
         {
             GETCHR(sock, msgt);
-            while(msgt == 31 && msgt != 19)
+            while(msgt != 31 && msgt != 19)
             {
                 if(msgt == 37)
                 {
@@ -162,6 +168,16 @@ int main(int argl, char *argv[])
             else
             {
                 fputs("Game is beginning in 3", stdout);
+                mssleep(997);
+                fputs("\b2", stdout);
+                mssleep(997);
+                fputs("\b1", stdout);
+                GETCHR(sock, msgt);
+                if(msgt == 19)
+                {
+                    puts("\b0");
+                    PUTCHR(sock, msgt);
+                }
             }
         }
         else
