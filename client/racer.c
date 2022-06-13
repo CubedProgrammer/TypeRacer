@@ -124,6 +124,7 @@ int main(int argl, char *argv[])
     tcsetattr(STDIN_FILENO, TCSANOW, &curr);
 #endif
     const char *host = argv[1];
+    char paragraph[5041];
     if(host == NULL)
     {
         char conmsg[] = "Enter host name of server you wish to connect to: ";
@@ -142,7 +143,7 @@ int main(int argl, char *argv[])
         char name[60], oname[60];
         fputs("Enter your name: ", stdout);
         rdln(name, sizeof name);
-        printf("\n Your name is %s.\n", name);
+        printf("\nYour name is %s.\n", name);
         char msgt = strlen(name);
         PUTCHR(sock, msgt);
         write(sock, name, msgt);
@@ -151,6 +152,7 @@ int main(int argl, char *argv[])
         GETCHR(sock, msgt);
         if(msgt == 19)
         {
+            PUTCHR(sock, msgt);
             GETCHR(sock, msgt);
             while(msgt != 31 && msgt != 19)
             {
@@ -164,7 +166,10 @@ int main(int argl, char *argv[])
                 GETCHR(sock, msgt);
             }
             if(msgt == 31)
+            {
                 close(sock);
+                puts("Server asked to disconnect");
+            }
             else
             {
                 fputs("Game is beginning in 3", stdout);
@@ -177,6 +182,24 @@ int main(int argl, char *argv[])
                 {
                     puts("\b0");
                     PUTCHR(sock, msgt);
+                    GETCHR(sock, msgt);
+                    if(msgt == 41)
+                    {
+                        GETCHR(sock, msgt);
+                        read(sock, paragraph, msgt);
+                        paragraph[msgt] = '\0';
+                        puts(paragraph);
+                    }
+                    else
+                    {
+                        close(sock);
+                        puts("Could not receive paragraph for typing.");
+                    }
+                }
+                else
+                {
+                    close(sock);
+                    puts("Connection closed unexpectedtly.");
                 }
             }
         }

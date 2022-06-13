@@ -80,13 +80,17 @@ void *handle_client(void *arg)
                 {
                     msgt = 37;
                     PUTCHR(race->racers[i].cli, msgt);
-                    PUTCHR(cfd, msgt);
+                    if(i < race->cnt - 1)
+                        PUTCHR(cfd, msgt);
                     msgt = strlen(player->name);
                     PUTCHR(race->racers[i].cli, msgt);
                     write(race->racers[i].cli, player->name, msgt);
                     msgt = strlen(race->racers[i].name);
-                    PUTCHR(cfd, msgt);
-                    write(cfd, race->racers[i].name, msgt);
+                    if(i < race->cnt - 1)
+                    {
+                        PUTCHR(cfd, msgt);
+                        write(cfd, race->racers[i].name, msgt);
+                    }
                 }
                 while(race->status == 3)
                 {
@@ -103,10 +107,21 @@ void *handle_client(void *arg)
                             msgt = 19;
                             for(size_t i = 0; i < race->cnt; ++i)
                                 PUTCHR(cfd, msgt);
+                            for(size_t i = 0; i < race->cnt; ++i)
+                            {
+                                msgt = 41;
+                                PUTCHR(cfd, msgt);
+                                msgt = race->plen;
+                                PUTCHR(cfd, msgt);
+                                write(cfd, race->paragraph, race->plen);
+                            }
+                            log_printf("Race %u has started\n", race->num);
                             race->status = 4;
+                            msgt = 19;
                         }
                         else
                         {
+                            log_printf("Host %s decided to terminate race %u\n", player->name, race->num);
                             race->status = 5;
                             msgt = 31;
                         }

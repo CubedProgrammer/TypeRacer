@@ -11,6 +11,8 @@ struct racer
 
 struct racetrack
 {
+    const char *paragraph;
+    size_t plen;
     struct racer *racers;
     size_t cnt, cap;
     int status;

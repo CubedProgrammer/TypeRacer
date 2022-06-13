@@ -1,9 +1,16 @@
+#include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
+#include<sys/stat.h>
+#include<time.h>
 #include<unistd.h>
 #include"race.h"
 #define DEFAULT_CAP 10
 struct racetrack_ht tr_racetrack_htable;
+char *tr_paragraph_all;
+const char *tr_paragraph_array[3720];
+size_t tr_paragraph_len[3720];
+size_t tr_paragraph_cnt;
 size_t racetrack_hash(uint32_t num)
 {
     return num % tr_racetrack_htable.bcnt;
@@ -17,7 +24,43 @@ int racetrack_init(void)
     if(tr_racetrack_htable.buckets == NULL)
         succ = -1;
     else
+    {
         memset(tr_racetrack_htable.buckets, 0, sizeof(*tr_racetrack_htable.buckets) * tr_racetrack_htable.bcnt);
+        struct stat fdat;
+        succ = stat("paragraphs.txt", &fdat);
+        if(succ == 0)
+        {
+            size_t fsz = fdat.st_size;
+            tr_paragraph_all = malloc(fsz);
+            if(tr_paragraph_all != NULL)
+            {
+                FILE *f = fopen("paragraphs.txt", "r");
+                if(f != NULL)
+                {
+                    fread(tr_paragraph_all, 1, fsz, f);
+                    fclose(f);
+                    size_t ind = 0, last = 0;
+                    tr_paragraph_array[ind] = tr_paragraph_all;
+                    for(size_t i = 0; i < fsz; ++i)
+                    {
+                        if(tr_paragraph_all[i] == '\n')
+                        {
+                            tr_paragraph_len[ind] = i - last;
+                            last = i + 1;
+                            ++ind;
+                            if(i < fsz - 1)
+                                tr_paragraph_array[ind] = tr_paragraph_all + last;
+                        }
+                    }
+                    tr_paragraph_cnt = ind;
+                }
+                else
+                    succ = -1;
+            }
+            else
+                succ = -1;
+        }
+    }
     return succ;
 }
 int racetrack_insert(uint32_t num)
@@ -59,6 +102,9 @@ int racetrack_insert(uint32_t num)
             tr_racetrack_htable.buckets[h].cap = DEFAULT_CAP;
             tr_racetrack_htable.buckets[h].racers = malloc(sizeof(*tr_racetrack_htable.buckets[h].racers) * DEFAULT_CAP);
             tr_racetrack_htable.buckets[h].status = 3;
+            size_t pchoice = time(NULL) % tr_paragraph_cnt;
+            tr_racetrack_htable.buckets[h].paragraph = tr_paragraph_array[pchoice];
+            tr_racetrack_htable.buckets[h].plen = tr_paragraph_len[pchoice];
             if(tr_racetrack_htable.buckets[h].racers == NULL)
             {
                 tr_racetrack_htable.buckets[h].cap = 0;
