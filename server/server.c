@@ -159,7 +159,11 @@ void *handle_client(void *arg)
                             if(msgt == 23)
                             {
                                 if(player->progress < race->goal)
-                                    ++player->progress;
+                                {
+                                    GETCHR(cfd, prog);
+                                    prog = ntohs(prog);
+                                    player->progress = prog;
+                                }
                             }
                             msgt = 29;
                             PUTCHR(cfd, msgt);
