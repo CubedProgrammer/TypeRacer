@@ -15,6 +15,35 @@
 void *type_race(void *arg)
 {
     struct typebuf *tp = arg, tbuf = *tp;
-    rdln(tbuf.cbuf, tbuf.sz);
+    char *buf = tbuf.cbuf;
+    size_t capa = tbuf.sz, ind = 0;
+    for(int ch = rd(); ch != 021; ch = rd())
+    {
+        switch(ch)
+        {
+            case 0177:
+                if(ind > 0)
+                {
+                    --ind;
+                    buf[ind] = '\0';
+                }
+                else
+                    ring;
+                break;
+            default:
+                if(ch >= ' ' && ch < 0177)
+                {
+                    if(ind < capa)
+                    {
+                        buf[ind] = ch;
+                        ++ind;
+                    }
+                    else
+                        ring;
+                }
+                else
+                    ring;
+        }
+    }
     return NULL;
 }

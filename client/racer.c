@@ -122,7 +122,28 @@ int main(int argl, char *argv[])
                     tbuf.sz = sizeof utbuf;
                     pthread_t pth;
                     pthread_create(&pth, NULL, type_race, &tbuf);
-                    time_t start = time(NULL);
+                    time_t curr = time(NULL), end = curr + 60;
+                    int tdiff;
+                    const char *ita, *itb;
+                    char finished = 0;
+                    for(; !finished && curr < end; time(&curr))
+                    {
+                        tdiff = end - curr;
+                        printf("%d:%02d\n", tdiff / 60, tdiff % 60);
+                        if(utbuf[0] == paragraph[0])
+                            fputs("\033\13332m", stdout);
+                        for(ita = paragraph, itb = utbuf; *ita != '\0' && *ita == *itb; ++ita, ++itb);
+                        fwrite(paragraph, 1, ita - paragraph, stdout);
+                        if(*itb != '\0')
+                            printf("\033\13331m%s", itb);
+                        else if(*ita == '\0')
+                            finished = 1;
+                        fputs("\033\133m \b", stdout);
+                        mssleep(49);
+                        fputs("\033\133F", stdout);
+                    }
+                    if(finished)
+                        printf("Congradulations, you finished with %li seconds remaining.\n", end - curr);
                 }
                 else
                 {
