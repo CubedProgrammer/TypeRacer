@@ -27,7 +27,6 @@ struct racetrack
     struct racer *racers;
     size_t cnt, cap;
     int status;
-    size_t goal;
     time_t end;
     uint32_t num;
 };

@@ -15,6 +15,7 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
+#include<sys/select.h>
 #include<sys/socket.h>
 #include<termios.h>
 #include<time.h>
@@ -22,6 +23,7 @@
 #include"rd.h"
 #include"typing.h"
 #define PORT 6971
+#define BARLEN 60
 #ifdef _WIN32
 #define gch getch()
 #define mssleep(ms)Sleep(ms)
@@ -34,6 +36,7 @@ int connect_client(const char *host);
 int main(int argl, char *argv[])
 {
     puts("Welcome to type racing!");
+    puts("In this game, you will race against others to see who can type a paragraph the fastest.");
     setvbuf(stdout, NULL, _IONBF, 0);
 #ifdef _WIN32
 #else
@@ -72,16 +75,22 @@ int main(int argl, char *argv[])
     fputs("Enter your name: ", stdout);
     rdln(name, sizeof name);
     printf("\nYour name is %s.\n", name);
-    char msgt = strlen(name);
+    char unsigned msgt = strlen(name);
     PUTCHR(sock, msgt);
     write(sock, name, msgt);
     uint32_t trackn = 0;
     PUTCHR(sock, trackn);
     GETCHR(sock, msgt);
+    char progbar[BARLEN + 1];
+    progbar[BARLEN] = '\0';
+    struct timeval tv, *tvp = &tv;
+    fd_set fds, *fdsp = &fds;
     if(msgt == 19)
     {
         PUTCHR(sock, msgt);
         GETCHR(sock, msgt);
+        uint16_t prog;
+        size_t plcnt = 0, maxnamlen = 0;
         while(msgt != 31 && msgt != 19)
         {
             if(msgt == 37)
@@ -89,6 +98,9 @@ int main(int argl, char *argv[])
                 GETCHR(sock, msgt);
                 read(sock, oname, msgt);
                 oname[msgt] = '\0';
+                if(msgt > maxnamlen)
+                    maxnamlen = msgt;
+                ++plcnt;
                 printf("%s has entered the race.\n", oname);
             }
             GETCHR(sock, msgt);
@@ -100,12 +112,14 @@ int main(int argl, char *argv[])
         }
         else
         {
+            printf("\033\133%zuF", plcnt + 4);
             fputs("Game is beginning in 3", stdout);
             mssleep(997);
             fputs("\b2", stdout);
             mssleep(997);
             fputs("\b1", stdout);
             GETCHR(sock, msgt);
+            uint16_t plen;
             if(msgt == 19)
             {
                 puts("\b0");
@@ -113,9 +127,10 @@ int main(int argl, char *argv[])
                 GETCHR(sock, msgt);
                 if(msgt == 41)
                 {
-                    GETCHR(sock, msgt);
-                    read(sock, paragraph, msgt);
-                    paragraph[msgt] = '\0';
+                    GETCHR(sock, plen);
+                    plen = ntohs(plen);
+                    read(sock, paragraph, plen);
+                    paragraph[plen] = '\0';
                     puts(paragraph);
                     struct typebuf tbuf;
                     tbuf.cbuf = utbuf;
@@ -123,8 +138,9 @@ int main(int argl, char *argv[])
                     pthread_t pth;
                     pthread_create(&pth, NULL, type_race, &tbuf);
                     time_t curr = time(NULL), end = curr + 60;
-                    int tdiff;
+                    int tdiff, ltdiff = 60;
                     const char *ita, *itb;
+                    int proglen;
                     char finished = 0;
                     for(; !finished && curr < end; time(&curr))
                     {
@@ -134,12 +150,45 @@ int main(int argl, char *argv[])
                             fputs("\033\13332m", stdout);
                         for(ita = paragraph, itb = utbuf; *ita != '\0' && *ita == *itb; ++ita, ++itb);
                         fwrite(paragraph, 1, ita - paragraph, stdout);
+                        if(tdiff <= ltdiff - 2)
+                        {
+                            ltdiff = tdiff;
+                            prog = ita - paragraph;
+                            prog = htons(prog);
+                            msgt = 23;
+                            PUTCHR(sock, msgt);
+                            PUTCHR(sock, prog);
+                        }
                         if(*itb != '\0')
                             printf("\033\13331m%s", itb);
                         else if(*ita == '\0')
                             finished = 1;
                         fputs("\033\133m \b", stdout);
                         mssleep(49);
+                        tv.tv_sec = tv.tv_usec = 0;
+                        FD_ZERO(fdsp);
+                        FD_SET(sock, fdsp);
+                        if(select(sock + 1, fdsp, NULL, NULL, tvp))
+                        {
+                            GETCHR(sock, msgt);
+                            if(msgt == 29)
+                            {
+                                for(size_t i = 0; i < plcnt; ++i)
+                                {
+                                    GETCHR(sock, prog);
+                                    prog = ntohs(prog);
+                                    proglen = prog * BARLEN / plen;
+                                    memset(progbar, '-', proglen);
+                                    if(proglen < BARLEN)
+                                    {
+                                        memset(progbar + proglen, ' ', BARLEN - proglen);
+                                        progbar[proglen] = '>';
+                                    }
+                                    printf("\n\033\133%zuC%s", maxnamlen + 1, progbar);
+                                }
+                                printf("\033\133%zuF", plcnt);
+                            }
+                        }
                         fputs("\033\133F", stdout);
                     }
                     if(finished)

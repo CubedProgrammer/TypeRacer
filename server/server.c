@@ -54,7 +54,7 @@ void *handle_client(void *arg)
     time_t currt;
     char msgt;
     int succ;
-    uint16_t prog;
+    uint16_t prog, plen;
     fd_set fds, *fdsp = &fds;
     struct timeval tv;
     int ready;
@@ -122,8 +122,8 @@ void *handle_client(void *arg)
                             {
                                 msgt = 41;
                                 PUTCHR(cfd, msgt);
-                                msgt = race->plen;
-                                PUTCHR(cfd, msgt);
+                                plen = ntohs(race->plen);
+                                PUTCHR(cfd, plen);
                                 write(cfd, race->paragraph, race->plen);
                             }
                             log_printf("Race %u has started\n", race->num);
@@ -158,7 +158,7 @@ void *handle_client(void *arg)
                         {
                             if(msgt == 23)
                             {
-                                if(player->progress < race->goal)
+                                if(player->progress < race->plen)
                                 {
                                     GETCHR(cfd, prog);
                                     prog = ntohs(prog);
