@@ -63,7 +63,12 @@ void *handle_client(void *arg)
         track = nextui();
         succ = racetrack_insert(track);
         if(succ == 0)
+        {
+            track = htonl(track);
+            PUTCHR(cfd, track);
+            track = ntohl(track);
             goto joinrace;
+        }
         else
         {
             log_printf("Track 0x%x could not be created.\n", track);

@@ -78,8 +78,20 @@ int main(int argl, char *argv[])
     char unsigned msgt = strlen(name);
     PUTCHR(sock, msgt);
     write(sock, name, msgt);
-    uint32_t trackn = 0;
+    uint32_t trackn;
+    char trackbuf[9];
+    puts("Enter the room number to join, or zero to create a room");
+    rdln(trackbuf, sizeof trackbuf);
+    trackn = strtoul(trackbuf, NULL, 16);
+    trackn = htonl(trackn);
     PUTCHR(sock, trackn);
+    if(trackn == 0)
+    {
+        GETCHR(sock, trackn);
+        trackn = ntohl(trackn);
+        printf("Room is %08x\n", trackn);
+        trackn = 0;
+    }
     GETCHR(sock, msgt);
     char progbar[BARLEN + 1];
     progbar[BARLEN] = '\0';
@@ -87,7 +99,13 @@ int main(int argl, char *argv[])
     fd_set fds, *fdsp = &fds;
     if(msgt == 19)
     {
-        PUTCHR(sock, msgt);
+        if(trackn == 0)
+        {
+            msgt = 19;
+            puts("Press any key to begin the game...");
+            rd();
+            PUTCHR(sock, msgt);
+        }
         GETCHR(sock, msgt);
         uint16_t prog;
         size_t plcnt = 0, maxnamlen = 0;
