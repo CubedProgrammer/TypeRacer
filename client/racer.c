@@ -33,6 +33,7 @@
 #define mssleep(ms)usleep((ms) * 1000)
 #endif
 int connect_client(const char *host);
+void *await_begin(void *arg);
 int main(int argl, char *argv[])
 {
     puts("Welcome to type racing!");
@@ -101,10 +102,9 @@ int main(int argl, char *argv[])
     {
         if(trackn == 0)
         {
-            msgt = 19;
             puts("Press any key to begin the game...");
-            rd();
-            PUTCHR(sock, msgt);
+            pthread_t beginth;
+            pthread_create(&beginth, NULL, await_begin, &sock);
         }
         GETCHR(sock, msgt);
         uint16_t prog;
@@ -141,7 +141,8 @@ int main(int argl, char *argv[])
             if(msgt == 19)
             {
                 puts("\b0");
-                PUTCHR(sock, msgt);
+                if(trackn != 0)
+                    PUTCHR(sock, msgt);
                 GETCHR(sock, msgt);
                 if(msgt == 41)
                 {
@@ -160,28 +161,34 @@ int main(int argl, char *argv[])
                     const char *ita, *itb;
                     int proglen;
                     char finished = 0;
-                    for(; !finished && curr < end; time(&curr))
+                    for(; curr < end; time(&curr))
                     {
                         tdiff = end - curr;
                         printf("%d:%02d\n", tdiff / 60, tdiff % 60);
-                        if(utbuf[0] == paragraph[0])
-                            fputs("\033\13332m", stdout);
-                        for(ita = paragraph, itb = utbuf; *ita != '\0' && *ita == *itb; ++ita, ++itb);
-                        fwrite(paragraph, 1, ita - paragraph, stdout);
-                        if(tdiff <= ltdiff - 2)
+                        if(!finished)
                         {
-                            ltdiff = tdiff;
-                            prog = ita - paragraph;
-                            prog = htons(prog);
-                            msgt = 23;
-                            PUTCHR(sock, msgt);
-                            PUTCHR(sock, prog);
+                            if(utbuf[0] == paragraph[0])
+                                fputs("\033\13332m", stdout);
+                            for(ita = paragraph, itb = utbuf; *ita != '\0' && *ita == *itb; ++ita, ++itb);
+                            fwrite(paragraph, 1, ita - paragraph, stdout);
+                            if(tdiff <= ltdiff - 2)
+                            {
+                                ltdiff = tdiff;
+                                prog = ita - paragraph;
+                                prog = htons(prog);
+                                msgt = 23;
+                                PUTCHR(sock, msgt);
+                                PUTCHR(sock, prog);
+                            }
+                            if(*itb != '\0')
+                                printf("\033\13331m%s", itb);
+                            else if(*ita == '\0')
+                            {
+                                printf("\rCongradulations, you finished with %li seconds remaining.", end - curr);
+                                finished = 1;
+                            }
+                            fputs("\033\133m \b", stdout);
                         }
-                        if(*itb != '\0')
-                            printf("\033\13331m%s", itb);
-                        else if(*ita == '\0')
-                            finished = 1;
-                        fputs("\033\133m \b", stdout);
                         mssleep(49);
                         tv.tv_sec = tv.tv_usec = 0;
                         FD_ZERO(fdsp);
@@ -202,15 +209,15 @@ int main(int argl, char *argv[])
                                         memset(progbar + proglen, ' ', BARLEN - proglen);
                                         progbar[proglen] = '>';
                                     }
-                                    printf("\n\033\133%zuC%s", maxnamlen + 1, progbar);
+                                    printf("\n\033\133%zuC%s|", maxnamlen + 1, progbar);
                                 }
                                 printf("\033\133%zuF", plcnt);
                             }
                         }
                         fputs("\033\133F", stdout);
                     }
-                    if(finished)
-                        printf("Congradulations, you finished with %li seconds remaining.\n", end - curr);
+                    if(!finished)
+                        puts("Unfortunately, you ran out of time, keep practicing!");
                 }
                 else
                 {
@@ -231,6 +238,15 @@ int main(int argl, char *argv[])
     tcsetattr(STDIN_FILENO, TCSANOW, &old);
 #endif
     return 0;
+}
+void *await_begin(void *arg)
+{
+    int *sockp = arg;
+    int sock = *sockp;
+    rd();
+    char c = 19;
+    PUTCHR(sock, c);
+    return NULL;
 }
 int connect_client(const char *host)
 {
