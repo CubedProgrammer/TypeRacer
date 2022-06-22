@@ -15,6 +15,8 @@
 #include<stdlib.h>
 #include<string.h>
 #include<time.h>
+#include<signal.h>
+#include<sys/select.h>
 #include<sys/socket.h>
 #include<unistd.h>
 #include"logging.h"
@@ -118,18 +120,18 @@ void *handle_client(void *arg)
                             currt = time(NULL);
                             race->end = currt + 63;
                             for(size_t i = 0; i < race->cnt; ++i)
-                                PUTCHR(cfd, msgt);
+                                PUTCHR(race->racers[i].cli, msgt);
                             usleep(3000000);
                             msgt = 19;
                             for(size_t i = 0; i < race->cnt; ++i)
-                                PUTCHR(cfd, msgt);
+                                PUTCHR(race->racers[i].cli, msgt);
                             for(size_t i = 0; i < race->cnt; ++i)
                             {
                                 msgt = 41;
-                                PUTCHR(cfd, msgt);
+                                PUTCHR(race->racers[i].cli, msgt);
                                 plen = ntohs(race->plen);
-                                PUTCHR(cfd, plen);
-                                write(cfd, race->paragraph, race->plen);
+                                PUTCHR(race->racers[i].cli, plen);
+                                write(race->racers[i].cli, race->paragraph, race->plen);
                             }
                             log_printf("Race %u has started\n", race->num);
                             race->status = 4;
@@ -180,6 +182,7 @@ void *handle_client(void *arg)
                             }
                             time(&currt);
                         }
+                        race->status = 5;
                     }
                 }
                 else
@@ -235,6 +238,7 @@ void *accept_clients(void *arg)
 }
 int main(int argl, char *argv[])
 {
+    signal(SIGPIPE, SIG_IGN);
     puts("TypeRacer");
     java_util_Random_seed = time(NULL);
     int succ = init_logger(LOGFILE) + racetrack_init();

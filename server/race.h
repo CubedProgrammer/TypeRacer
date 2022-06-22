@@ -24,10 +24,10 @@ struct racetrack
 {
     const char *paragraph;
     size_t plen;
-    struct racer *racers;
-    size_t cnt, cap;
-    int status;
-    time_t end;
+    struct racer *volatile racers;
+    volatile size_t cnt, cap;
+    volatile int status;
+    volatile time_t end;
     uint32_t num;
 };
 
