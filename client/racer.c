@@ -15,6 +15,7 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
+#include<sys/ioctl.h>
 #include<sys/select.h>
 #include<sys/socket.h>
 #include<termios.h>
@@ -23,7 +24,8 @@
 #include"rd.h"
 #include"typing.h"
 #define PORT 6971
-#define BARLEN 60
+#define BARLEN (cols - maxnamlen - 2)
+#define MAXBARLEN 240
 #ifdef _WIN32
 #define gch getch()
 #define mssleep(ms)Sleep(ms)
@@ -34,6 +36,12 @@
 #endif
 int connect_client(const char *host);
 void *await_begin(void *arg);
+int term_width(void)
+{
+    struct winsize sz;
+    ioctl(STDIN_FILENO, TIOCGWINSZ, &sz);
+    return sz.ws_col;
+}
 int main(int argl, char *argv[])
 {
     puts("Welcome to type racing!");
@@ -48,7 +56,9 @@ int main(int argl, char *argv[])
     tcsetattr(STDIN_FILENO, TCSANOW, &curr);
 #endif
     const char *host = argv[1];
-    char paragraph[5041], utbuf[5041];
+    char paragraph[5041];
+    char utbuf[5041];
+    memset(utbuf, 0, sizeof utbuf);
     int sock = -1;
     char conmsg[] = "Enter host name of server you wish to connect to: ";
     if(host == NULL)
@@ -94,8 +104,9 @@ int main(int argl, char *argv[])
         trackn = 0;
     }
     GETCHR(sock, msgt);
-    char progbar[BARLEN + 1];
-    progbar[BARLEN] = '\0';
+    char progbar[MAXBARLEN + 1];
+    char spacebars[MAXBARLEN];
+    memset(spacebars, ' ', MAXBARLEN);
     struct timeval tv, *tvp = &tv;
     fd_set fds, *fdsp = &fds;
     if(msgt == 19)
@@ -107,8 +118,9 @@ int main(int argl, char *argv[])
             pthread_create(&beginth, NULL, await_begin, &sock);
         }
         GETCHR(sock, msgt);
+        int cols;
         uint16_t prog;
-        size_t plcnt = 0, maxnamlen = 0;
+        size_t plcnt = 0, maxnamlen = 0, correct;
         while(msgt != 31 && msgt != 19)
         {
             if(msgt == 37)
@@ -150,7 +162,6 @@ int main(int argl, char *argv[])
                     plen = ntohs(plen);
                     read(sock, paragraph, plen);
                     paragraph[plen] = '\0';
-                    puts(paragraph);
                     struct typebuf tbuf;
                     tbuf.cbuf = utbuf;
                     tbuf.sz = sizeof utbuf;
@@ -159,6 +170,7 @@ int main(int argl, char *argv[])
                     time_t curr = time(NULL), end = curr + 60;
                     int tdiff, ltdiff = 60;
                     const char *ita, *itb;
+                    size_t paraoff, textlen, utlen;
                     int proglen;
                     char finished = 0;
                     for(; curr < end; time(&curr))
@@ -167,21 +179,50 @@ int main(int argl, char *argv[])
                         printf("%d:%02d\n", tdiff / 60, tdiff % 60);
                         if(!finished)
                         {
+                            cols = term_width() - 1;
+                            utlen = strlen(utbuf);
+                            paraoff = utlen - utlen % cols;
+                            if(paraoff && paraoff == utlen)
+                                paraoff -= cols;
+                            for(ita = paragraph, itb = utbuf; *ita != '\0' && *ita == *itb; ++ita, ++itb);
+                            correct = ita - paragraph;
+                            textlen = plen - paraoff;
+                            if(textlen > cols)
+                                textlen = cols;
+                            fwrite(paragraph + paraoff, 1, textlen, stdout);
+                            if(cols > textlen)
+                                fwrite(spacebars, 1, cols - textlen, stdout);
+                        }
+                        putchar('\n');
+                        if(!finished)
+                        {
                             if(utbuf[0] == paragraph[0])
                                 fputs("\033\13332m", stdout);
-                            for(ita = paragraph, itb = utbuf; *ita != '\0' && *ita == *itb; ++ita, ++itb);
-                            fwrite(paragraph, 1, ita - paragraph, stdout);
+                            if(correct > paraoff)
+                            {
+                                fwrite(paragraph + paraoff, 1, correct - paraoff, stdout);
+                                if(cols > correct - paraoff)
+                                    fputs(" \b", stdout);
+                                //fwrite(spacebars, 1, cols + paraoff - correct, stdout);
+                                //printf("\033\133%zuD", cols + paraoff - correct);
+                            }
                             if(tdiff <= ltdiff - 2)
                             {
                                 ltdiff = tdiff;
-                                prog = ita - paragraph;
+                                prog = correct;
                                 prog = htons(prog);
                                 msgt = 23;
                                 PUTCHR(sock, msgt);
                                 PUTCHR(sock, prog);
                             }
                             if(*itb != '\0')
-                                printf("\033\13331m%s", itb);
+                            {
+                                fputs("\033\13331m", stdout);
+                                if(correct > paraoff)
+                                    fwrite(itb, 1, utlen - correct, stdout);
+                                else
+                                    fwrite(utbuf + paraoff, 1, utlen - paraoff, stdout);
+                            }
                             else if(*ita == '\0')
                             {
                                 printf("\rCongradulations, you finished with %li seconds remaining.", end - curr);
@@ -209,12 +250,13 @@ int main(int argl, char *argv[])
                                         memset(progbar + proglen, ' ', BARLEN - proglen);
                                         progbar[proglen] = '>';
                                     }
+                                    progbar[BARLEN] = '\0';
                                     printf("\n\033\133%zuC%s|", maxnamlen + 1, progbar);
                                 }
                                 printf("\033\133%zuF", plcnt);
                             }
                         }
-                        fputs("\033\133F", stdout);
+                        fputs("\033\1332F", stdout);
                     }
                     if(!finished)
                         puts("Unfortunately, you ran out of time, keep practicing!");
