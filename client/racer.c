@@ -231,6 +231,11 @@ int main(int argl, char *argv[])
                             else if(*ita == '\0')
                             {
                                 printf("\rCongradulations, you finished with %li seconds remaining.", end - curr);
+                                prog = plen;
+                                prog = htons(prog);
+                                msgt = 23;
+                                PUTCHR(sock, msgt);
+                                PUTCHR(sock, prog);
                                 finished = 1;
                             }
                             fputs("\033\133m", stdout);
@@ -264,7 +269,11 @@ int main(int argl, char *argv[])
                         fputs("\033\1332F", stdout);
                     }
                     if(quit)
+                    {
                         puts("You decided to forfeit the race");
+                        msgt = 31;
+                        PUTCHR(sock, msgt);
+                    }
                     else if(!finished)
                         puts("Unfortunately, you ran out of time, keep practicing!");
                 }
@@ -284,8 +293,15 @@ int main(int argl, char *argv[])
     else
         puts("Failed to enter room");
     puts("Press q to quit, any other key to play again.");
+    msgt = 31;
     if(rd() != 'q')
+    {
+        msgt = 47;
+        PUTCHR(sock, msgt);
         goto play;
+    }
+    PUTCHR(sock, msgt);
+    close(sock);
 #ifndef _WIN32
     tcsetattr(STDIN_FILENO, TCSANOW, &old);
 #endif

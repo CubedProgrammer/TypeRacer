@@ -52,7 +52,6 @@ void *handle_client(void *arg)
     name[namlen] = '\0';
     log_printf("Player %s has connected\n", name);
     uint32_t track;
-    GETCHR(cfd, track);
     time_t currt;
     char msgt;
     int succ;
@@ -60,6 +59,8 @@ void *handle_client(void *arg)
     fd_set fds, *fdsp = &fds;
     struct timeval tv;
     int ready;
+    getroom:
+    GETCHR(cfd, track);
     if(track == 0)
     {
         track = nextui();
@@ -200,12 +201,18 @@ void *handle_client(void *arg)
                             time(&currt);
                         }
                     }
-                    close(cfd);
                     if(quit)
+                    {
+                        log_printf("Player %s has resigned race 0x%x\n", name, track);
                         usleep((race->end - currt) * 1000000);
-                    race->status = 5;
-                    if(player == race->racers)
-                        racetrack_remove(track);
+                    }
+                    else
+                    {
+                        race->status = 5;
+                        log_printf("Player %s has finished race 0x%x\n", name, track);
+                        if(player == race->racers)
+                            racetrack_remove(track);
+                    }
                 }
                 else if(race->status == 4)
                 {
@@ -221,7 +228,24 @@ void *handle_client(void *arg)
             log_printf("Player %s could not join room 0x%x\n", name, track);
         }
     }
-    close(cfd);
+    tv.tv_sec = 1800;
+    tv.tv_usec = 0;
+    FD_ZERO(fdsp);
+    FD_SET(cfd, fdsp);
+    msgt = 31;
+    ready = select(cfd + 1, fdsp, NULL, NULL, &tv);
+    if(ready > 0)
+        GETCHR(cfd, msgt);
+    else
+        log_puts("Client waited thirty minutes and is now forced to leave.");
+    if(msgt == 31)
+        close(cfd);
+    else
+    {
+        log_printf("Player %s is playing again\n", name);
+        goto getroom;
+    }
+    log_printf("Player %s is leaving\n", name);
     return NULL;
 }
 void *accept_clients(void *arg)

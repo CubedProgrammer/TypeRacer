@@ -204,6 +204,7 @@ void racetrack_remove(uint32_t num)
                 close(rp->cli);
             free(tr_racetrack_htable.buckets[h].racers);
             tr_racetrack_htable.buckets[h].cap = 0;
+            --tr_racetrack_htable.cnt;
         }
         else
         {
