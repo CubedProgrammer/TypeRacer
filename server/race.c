@@ -188,6 +188,10 @@ int racetrack_join(uint32_t num, int cfd, const char *name)
     ret:
     return succ;
 }
+size_t racetrack_cnt(void)
+{
+    return tr_racetrack_htable.cnt;
+}
 void racetrack_remove(uint32_t num)
 {
     size_t h = racetrack_hash(num);

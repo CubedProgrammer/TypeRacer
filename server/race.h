@@ -41,5 +41,6 @@ int racetrack_init(void);
 int racetrack_insert(uint32_t num);
 struct racetrack *racetrack_get(uint32_t num);
 int racetrack_join(uint32_t num, int cfd, const char *name);
+size_t racetrack_cnt(void);
 void racetrack_remove(uint32_t num);
 #endif

@@ -66,6 +66,7 @@ void *handle_client(void *arg)
         succ = racetrack_insert(track);
         if(succ == 0)
         {
+            log_printf("Track 0x%x was successfully created.\nThere are now %zu tracks.\n", track, racetrack_cnt());
             track = htonl(track);
             PUTCHR(cfd, track);
             track = ntohl(track);
@@ -112,8 +113,23 @@ void *handle_client(void *arg)
                 }
                 while(race->status == 3)
                 {
-                    GETCHR(cfd, msgt);
-                    if(player == race->racers)
+                    tv.tv_sec = 3600;
+                    tv.tv_usec = 0;
+                    FD_ZERO(fdsp);
+                    FD_SET(cfd, fdsp);
+                    if(select(cfd + 1, fdsp, NULL, NULL, &tv))
+                        GETCHR(cfd, msgt);
+                    else if(player == race->racers)
+                    {
+                        msgt = 31;
+                        for(size_t i = 0; i < race->cnt; ++i)
+                        {
+                            PUTCHR(race->racers[i].cli, msgt);
+                            close(race->racers[i].cli);
+                        }
+                        race->status = 5;
+                    }
+                    if(race->status == 3 && player == race->racers)
                     {
                         if(msgt == 19)
                         {
@@ -133,7 +149,7 @@ void *handle_client(void *arg)
                                 PUTCHR(race->racers[i].cli, plen);
                                 write(race->racers[i].cli, race->paragraph, race->plen);
                             }
-                            log_printf("Race %u has started\n", race->num);
+                            log_printf("Race 0x%x has started\n", race->num);
                             race->status = 4;
                             msgt = 19;
                         }
@@ -145,7 +161,7 @@ void *handle_client(void *arg)
                         }
                     }
                 }
-                if(msgt == 19)
+                if(race->status == 4 && msgt == 19)
                 {
                     currt = time(NULL);
                     while(currt < race->end)
@@ -185,7 +201,7 @@ void *handle_client(void *arg)
                         race->status = 5;
                     }
                 }
-                else
+                else if(race->status == 4)
                 {
                     msgt = 31;
                     PUTCHR(cfd, msgt);
@@ -196,7 +212,7 @@ void *handle_client(void *arg)
         {
             msgt = 13;
             PUTCHR(cfd, msgt);
-            log_printf("Player %s could not join room %u\n", name, track);
+            log_printf("Player %s could not join room 0x%x\n", name, track);
         }
     }
     close(cfd);

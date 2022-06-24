@@ -179,7 +179,7 @@ int main(int argl, char *argv[])
                         printf("%d:%02d\n", tdiff / 60, tdiff % 60);
                         if(!finished)
                         {
-                            cols = term_width() - 1;
+                            cols = term_width();
                             utlen = strlen(utbuf);
                             paraoff = utlen - utlen % cols;
                             if(paraoff && paraoff == utlen)
@@ -198,13 +198,11 @@ int main(int argl, char *argv[])
                         {
                             if(utbuf[0] == paragraph[0])
                                 fputs("\033\13332m", stdout);
+                            fwrite(spacebars, 1, cols, stdout);
+                            putchar('\r');
                             if(correct > paraoff)
                             {
                                 fwrite(paragraph + paraoff, 1, correct - paraoff, stdout);
-                                if(cols > correct - paraoff)
-                                    fputs(" \b", stdout);
-                                //fwrite(spacebars, 1, cols + paraoff - correct, stdout);
-                                //printf("\033\133%zuD", cols + paraoff - correct);
                             }
                             if(tdiff <= ltdiff - 2)
                             {
@@ -228,7 +226,7 @@ int main(int argl, char *argv[])
                                 printf("\rCongradulations, you finished with %li seconds remaining.", end - curr);
                                 finished = 1;
                             }
-                            fputs("\033\133m \b", stdout);
+                            fputs("\033\133m", stdout);
                         }
                         mssleep(49);
                         tv.tv_sec = tv.tv_usec = 0;
