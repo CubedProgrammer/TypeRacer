@@ -91,6 +91,12 @@ int main(int argl, char *argv[])
     write(sock, name, msgt);
     uint32_t trackn;
     char trackbuf[9];
+    char progbar[MAXBARLEN + 1];
+    char spacebars[MAXBARLEN];
+    memset(spacebars, ' ', MAXBARLEN);
+    struct timeval tv, *tvp = &tv;
+    fd_set fds, *fdsp = &fds;
+    play:
     puts("Enter the room number to join, or zero to create a room");
     rdln(trackbuf, sizeof trackbuf);
     trackn = strtoul(trackbuf, NULL, 16);
@@ -104,11 +110,6 @@ int main(int argl, char *argv[])
         trackn = 0;
     }
     GETCHR(sock, msgt);
-    char progbar[MAXBARLEN + 1];
-    char spacebars[MAXBARLEN];
-    memset(spacebars, ' ', MAXBARLEN);
-    struct timeval tv, *tvp = &tv;
-    fd_set fds, *fdsp = &fds;
     if(msgt == 19)
     {
         if(trackn == 0)
@@ -164,7 +165,10 @@ int main(int argl, char *argv[])
                     paragraph[plen] = '\0';
                     struct typebuf tbuf;
                     tbuf.cbuf = utbuf;
+                    utbuf[0] = '\0';
                     tbuf.sz = sizeof utbuf;
+                    tbuf.para = paragraph;
+                    tbuf.plen = plen;
                     pthread_t pth;
                     pthread_create(&pth, NULL, type_race, &tbuf);
                     time_t curr = time(NULL), end = curr + 60;
@@ -172,8 +176,9 @@ int main(int argl, char *argv[])
                     const char *ita, *itb;
                     size_t paraoff, textlen, utlen;
                     int proglen;
+                    char quit = 0;
                     char finished = 0;
-                    for(; curr < end; time(&curr))
+                    for(; !quit && curr < end; time(&curr))
                     {
                         tdiff = end - curr;
                         printf("%d:%02d\n", tdiff / 60, tdiff % 60);
@@ -181,6 +186,8 @@ int main(int argl, char *argv[])
                         {
                             cols = term_width();
                             utlen = strlen(utbuf);
+                            if(utbuf[utlen - 1] == 030)
+                                quit = 1;
                             paraoff = utlen - utlen % cols;
                             if(paraoff && paraoff == utlen)
                                 paraoff -= cols;
@@ -256,7 +263,9 @@ int main(int argl, char *argv[])
                         }
                         fputs("\033\1332F", stdout);
                     }
-                    if(!finished)
+                    if(quit)
+                        puts("You decided to forfeit the race");
+                    else if(!finished)
                         puts("Unfortunately, you ran out of time, keep practicing!");
                 }
                 else
@@ -274,6 +283,9 @@ int main(int argl, char *argv[])
     }
     else
         puts("Failed to enter room");
+    puts("Press q to quit, any other key to play again.");
+    if(rd() != 'q')
+        goto play;
 #ifndef _WIN32
     tcsetattr(STDIN_FILENO, TCSANOW, &old);
 #endif

@@ -163,8 +163,9 @@ void *handle_client(void *arg)
                 }
                 if(race->status == 4 && msgt == 19)
                 {
+                    char quit = 0;
                     currt = time(NULL);
-                    while(currt < race->end)
+                    while(!quit && currt < race->end)
                     {
                         tv.tv_sec = 1;
                         tv.tv_usec = 0;
@@ -176,7 +177,7 @@ void *handle_client(void *arg)
                         else
                             msgt = 97;
                         if(msgt == 31)
-                            currt = race->end;
+                            quit = 1;
                         else
                         {
                             if(msgt == 23)
@@ -198,8 +199,13 @@ void *handle_client(void *arg)
                             }
                             time(&currt);
                         }
-                        race->status = 5;
                     }
+                    close(cfd);
+                    if(quit)
+                        usleep((race->end - currt) * 1000000);
+                    race->status = 5;
+                    if(player == race->racers)
+                        racetrack_remove(track);
                 }
                 else if(race->status == 4)
                 {

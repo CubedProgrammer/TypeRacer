@@ -14,8 +14,9 @@
 #include<stddef.h>
 struct typebuf
 {
-    size_t sz;
+    size_t sz, plen;
     char *cbuf;
+    const char *para;
 };
 void *type_race(void *arg);
 #endif

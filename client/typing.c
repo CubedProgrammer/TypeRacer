@@ -10,6 +10,7 @@
 // You should have received a copy of the GNU General Public License along with /CubedProgrammer/TypeRacer. If not, see <https://www.gnu.org/licenses/>.
 
 #include<stdio.h>
+#include<string.h>
 #include"typing.h"
 #include"rd.h"
 void *type_race(void *arg)
@@ -17,7 +18,9 @@ void *type_race(void *arg)
     struct typebuf *tp = arg, tbuf = *tp;
     char *buf = tbuf.cbuf;
     size_t capa = tbuf.sz, ind = 0;
-    for(int ch = rd(); ch != 021; ch = rd())
+    char fini = 0;
+    int ch;
+    for(ch = rd(); !fini && ch != 030; ch = rd())
     {
         switch(ch)
         {
@@ -37,6 +40,8 @@ void *type_race(void *arg)
                     {
                         buf[ind] = ch;
                         ++ind;
+                        if(ind == tbuf.plen)
+                            fini = strcmp(tbuf.para, buf) == 0;
                     }
                     else
                         ring;
@@ -44,6 +49,11 @@ void *type_race(void *arg)
                 else
                     ring;
         }
+    }
+    if(ch == 030)
+    {
+        buf[ind] = 030;
+        buf[ind + 1] = '\0';
     }
     return NULL;
 }
