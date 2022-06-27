@@ -55,6 +55,13 @@ int main(int argl, char *argv[])
     curr.c_lflag &= ~(ICANON | ECHO);
     tcsetattr(STDIN_FILENO, TCSANOW, &curr);
 #endif
+    int succ = 0;
+    if(term_width() < 70)
+    {
+        succ = 1;
+        fputs("\033\13331mTerminal width must be greater than 69 characters.\033\133m\n", stderr);
+        goto end;
+    }
     const char *host = argv[1];
     char paragraph[5041];
     char utbuf[5041];
@@ -230,7 +237,9 @@ int main(int argl, char *argv[])
                             }
                             else if(*ita == '\0')
                             {
-                                printf("\rCongradulations, you finished with %li seconds remaining.", end - curr);
+                                printf("\r\033\1331mCongradulations, you finished with %li seconds remaining.", end - curr);
+                                fwrite(spacebars, 1, cols - 64, stdout);
+                                putchar('\r');
                                 prog = plen;
                                 prog = htons(prog);
                                 msgt = 23;
@@ -292,7 +301,7 @@ int main(int argl, char *argv[])
     }
     else
         puts("Failed to enter room");
-    puts("Press q to quit, any other key to play again.");
+    puts("\033\1331mPress q to quit, any other key to play again.\033\133m        ");
     msgt = 31;
     if(rd() != 'q')
     {
@@ -302,10 +311,12 @@ int main(int argl, char *argv[])
     }
     PUTCHR(sock, msgt);
     close(sock);
+    end:
 #ifndef _WIN32
     tcsetattr(STDIN_FILENO, TCSANOW, &old);
 #endif
-    return 0;
+    puts("Thank you for playing.");
+    return succ;
 }
 void *await_begin(void *arg)
 {
