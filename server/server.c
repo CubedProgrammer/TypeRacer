@@ -10,6 +10,7 @@
 // You should have received a copy of the GNU General Public License along with /CubedProgrammer/TypeRacer. If not, see <https://www.gnu.org/licenses/>.
 
 #include<arpa/inet.h>
+#include<errno.h>
 #include<pthread.h>
 #include<stdio.h>
 #include<stdlib.h>
@@ -87,6 +88,7 @@ void *handle_client(void *arg)
         succ = racetrack_join(track, cfd, name);
         if(succ == 0)
         {
+            log_printf("Player %s has joined room 0x%x.\n", name, track);
             struct racetrack *race = racetrack_get(track);
             struct racer *player = race->racers + race->cnt - 1;
             if(race->status == 3)
@@ -211,7 +213,10 @@ void *handle_client(void *arg)
                         race->status = 5;
                         log_printf("Player %s has finished race 0x%x\n", name, track);
                         if(player == race->racers)
+                        {
                             racetrack_remove(track);
+                            log_printf("Removed track 0x%x, there are now %zu tracks.\n", track, racetrack_cnt());
+                        }
                     }
                 }
                 else if(race->status == 4)
@@ -236,9 +241,23 @@ void *handle_client(void *arg)
     ready = select(cfd + 1, fdsp, NULL, NULL, &tv);
     if(ready > 0)
         GETCHR(cfd, msgt);
-    else
+    else if(ready == 0)
         log_puts("Client waited thirty minutes and is now forced to leave.");
-    if(msgt == 31)
+    else
+    {
+        switch(errno)
+        {
+            case EBADF:
+                log_printf("Socket %d is invalid for select.\n", cfd);
+                break;
+            case EINTR:
+                log_printf("Socket %d received interrupt signal.\n", cfd);
+                break;
+            default:
+                log_puts("Some other socket error occured with select");
+        }
+    }
+    if(msgt != 47)
         close(cfd);
     else
     {

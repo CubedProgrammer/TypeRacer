@@ -178,7 +178,7 @@ int main(int argl, char *argv[])
                     int proglen;
                     char quit = 0;
                     char finished = 0;
-                    for(; !quit && curr < end; time(&curr))
+                    for(; !quit && curr <= end; time(&curr))
                     {
                         tdiff = end - curr;
                         printf("%d:%02d\n", tdiff / 60, tdiff % 60);

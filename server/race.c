@@ -200,8 +200,8 @@ void racetrack_remove(uint32_t num)
         if(tr_racetrack_htable.buckets[h].num == num)
         {
             rm:
-            for(const struct racer *rp = tr_racetrack_htable.buckets[h].racers; rp != tr_racetrack_htable.buckets[h].racers + tr_racetrack_htable.buckets[h].cnt; ++rp)
-                close(rp->cli);
+            //for(const struct racer *rp = tr_racetrack_htable.buckets[h].racers; rp != tr_racetrack_htable.buckets[h].racers + tr_racetrack_htable.buckets[h].cnt; ++rp)
+                //close(rp->cli);
             free(tr_racetrack_htable.buckets[h].racers);
             tr_racetrack_htable.buckets[h].cap = 0;
             --tr_racetrack_htable.cnt;
