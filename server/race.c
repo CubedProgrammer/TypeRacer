@@ -111,7 +111,8 @@ int racetrack_insert(uint32_t num)
             tr_racetrack_htable.buckets[h].num = num;
             tr_racetrack_htable.buckets[h].cnt = 0;
             tr_racetrack_htable.buckets[h].cap = DEFAULT_CAP;
-            tr_racetrack_htable.buckets[h].racers = malloc(sizeof(*tr_racetrack_htable.buckets[h].racers) * DEFAULT_CAP);
+            tr_racetrack_htable.buckets[h].racers_real = malloc(sizeof(*tr_racetrack_htable.buckets[h].racers) * DEFAULT_CAP);
+            tr_racetrack_htable.buckets[h].racers = tr_racetrack_htable.buckets[h].racers_real;
             tr_racetrack_htable.buckets[h].status = 3;
             size_t pchoice = time(NULL) % tr_paragraph_cnt;
             tr_racetrack_htable.buckets[h].paragraph = tr_paragraph_array[pchoice];
@@ -184,8 +185,29 @@ int racetrack_join(uint32_t num, int cfd, const char *name)
     }
     strcpy(track->racers[ind].name, name);
     track->racers[ind].cli = cfd;
+    track->racers[ind].progress = 0;
     ++track->cnt;
     ret:
+    return succ;
+}
+int racetrack_leave(uint32_t num, size_t ind)
+{
+    int succ = 0;
+    struct racetrack *track = racetrack_get(num);
+    if(track == NULL)
+        succ = -1;
+    else
+    {
+        size_t cnt = track->cnt;
+        if(cnt > ind)
+        {
+            track->racers[ind].cli = -1;
+            if(ind == 0)
+                for(; track->racers->cli == -1; ++track->racers);
+        }
+        else
+            succ = -1;
+    }
     return succ;
 }
 size_t racetrack_cnt(void)
@@ -200,9 +222,7 @@ void racetrack_remove(uint32_t num)
         if(tr_racetrack_htable.buckets[h].num == num)
         {
             rm:
-            //for(const struct racer *rp = tr_racetrack_htable.buckets[h].racers; rp != tr_racetrack_htable.buckets[h].racers + tr_racetrack_htable.buckets[h].cnt; ++rp)
-                //close(rp->cli);
-            free(tr_racetrack_htable.buckets[h].racers);
+            free(tr_racetrack_htable.buckets[h].racers_real);
             tr_racetrack_htable.buckets[h].cap = 0;
             --tr_racetrack_htable.cnt;
         }

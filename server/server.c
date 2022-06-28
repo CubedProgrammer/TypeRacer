@@ -69,6 +69,8 @@ void *handle_client(void *arg)
         if(succ == 0)
         {
             log_printf("Track 0x%x was successfully created.\nThere are now %zu tracks.\n", track, racetrack_cnt());
+            msgt = 53;
+            PUTCHR(cfd, msgt);
             track = htonl(track);
             PUTCHR(cfd, track);
             track = ntohl(track);
@@ -196,7 +198,7 @@ void *handle_client(void *arg)
                             PUTCHR(cfd, msgt);
                             for(size_t i = 0; i < race->cnt; ++i)
                             {
-                                prog = race->racers[i].progress;
+                                prog = race->racers_real[i].progress;
                                 prog = htons(prog);
                                 PUTCHR(cfd, prog);
                             }
@@ -205,8 +207,8 @@ void *handle_client(void *arg)
                     }
                     if(quit)
                     {
+                        racetrack_leave(track, player - race->racers);
                         log_printf("Player %s has resigned race 0x%x\n", name, track);
-                        usleep((race->end - currt) * 1000000);
                     }
                     else
                     {

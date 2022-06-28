@@ -24,6 +24,7 @@ struct racetrack
 {
     const char *paragraph;
     size_t plen;
+    struct racer *volatile racers_real;
     struct racer *volatile racers;
     volatile size_t cnt, cap;
     volatile int status;
@@ -41,6 +42,7 @@ int racetrack_init(void);
 int racetrack_insert(uint32_t num);
 struct racetrack *racetrack_get(uint32_t num);
 int racetrack_join(uint32_t num, int cfd, const char *name);
+int racetrack_leave(uint32_t num, size_t ind);
 size_t racetrack_cnt(void);
 void racetrack_remove(uint32_t num);
 #endif

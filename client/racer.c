@@ -112,6 +112,7 @@ int main(int argl, char *argv[])
     PUTCHR(sock, trackn);
     if(trackn == 0)
     {
+        for(GETCHR(sock, msgt); msgt != 53; GETCHR(sock, msgt));
         GETCHR(sock, trackn);
         trackn = ntohl(trackn);
         printf("Room is %08x\n", trackn);
@@ -186,7 +187,7 @@ int main(int argl, char *argv[])
                     int proglen;
                     char quit = 0;
                     char finished = 0;
-                    for(; !quit && curr <= end + 1; time(&curr))
+                    for(; !quit && curr <= end; time(&curr))
                     {
                         tdiff = end - curr;
                         printf("%d:%02d\n", tdiff / 60, tdiff % 60);
