@@ -20,7 +20,7 @@ void *type_race(void *arg)
     size_t capa = tbuf.sz, ind = 0;
     char fini = 0;
     int ch;
-    for(ch = rd(); !fini && ch != 030; ch = rd())
+    for(ch = rd(); !fini && ch != 030; ch = fini ? ch : rd())
     {
         switch(ch)
         {

@@ -65,7 +65,6 @@ int main(int argl, char *argv[])
     const char *host = argv[1];
     char paragraph[5041];
     char utbuf[5041];
-    memset(utbuf, 0, sizeof utbuf);
     int sock = -1;
     char conmsg[] = "Enter host name of server you wish to connect to: ";
     if(host == NULL)
@@ -103,7 +102,9 @@ int main(int argl, char *argv[])
     memset(spacebars, ' ', MAXBARLEN);
     struct timeval tv, *tvp = &tv;
     fd_set fds, *fdsp = &fds;
+    int ready;
     play:
+    memset(utbuf, 0, sizeof utbuf);
     puts("Enter the room number to join, or zero to create a room");
     rdln(trackbuf, sizeof trackbuf);
     trackn = strtoul(trackbuf, NULL, 16);
@@ -151,7 +152,7 @@ int main(int argl, char *argv[])
         else
         {
             printf("\033\133%zuF", plcnt + 4);
-            fputs("Game is beginning in 3", stdout);
+            fputs("Game is beginning in 3                    \033\13320D", stdout);
             mssleep(997);
             fputs("\b2", stdout);
             mssleep(997);
@@ -185,7 +186,7 @@ int main(int argl, char *argv[])
                     int proglen;
                     char quit = 0;
                     char finished = 0;
-                    for(; !quit && curr <= end; time(&curr))
+                    for(; !quit && curr <= end + 1; time(&curr))
                     {
                         tdiff = end - curr;
                         printf("%d:%02d\n", tdiff / 60, tdiff % 60);
@@ -196,8 +197,6 @@ int main(int argl, char *argv[])
                             if(utbuf[utlen - 1] == 030)
                                 quit = 1;
                             paraoff = utlen - utlen % cols;
-                            if(paraoff && paraoff == utlen)
-                                paraoff -= cols;
                             for(ita = paragraph, itb = utbuf; *ita != '\0' && *ita == *itb; ++ita, ++itb);
                             correct = ita - paragraph;
                             textlen = plen - paraoff;
@@ -215,9 +214,7 @@ int main(int argl, char *argv[])
                             fwrite(spacebars, 1, cols, stdout);
                             putchar('\r');
                             if(correct > paraoff)
-                            {
                                 fwrite(paragraph + paraoff, 1, correct - paraoff, stdout);
-                            }
                             if(tdiff <= ltdiff - 2)
                             {
                                 ltdiff = tdiff;
@@ -253,7 +250,8 @@ int main(int argl, char *argv[])
                         tv.tv_sec = tv.tv_usec = 0;
                         FD_ZERO(fdsp);
                         FD_SET(sock, fdsp);
-                        if(select(sock + 1, fdsp, NULL, NULL, tvp))
+                        ready = select(sock + 1, fdsp, NULL, NULL, tvp);
+                        if(ready)
                         {
                             GETCHR(sock, msgt);
                             if(msgt == 29)
@@ -274,6 +272,16 @@ int main(int argl, char *argv[])
                                 }
                                 printf("\033\133%zuF", plcnt);
                             }
+                        }
+                        if(finished)
+                        {
+                            tv.tv_sec = 0;
+                            tv.tv_usec = 800;
+                            FD_ZERO(fdsp);
+                            FD_SET(STDIN_FILENO, fdsp);
+                            ready = select(STDIN_FILENO + 1, fdsp, NULL, NULL, &tv);
+                            if(ready && rd() == 030)
+                                quit = 1;
                         }
                         fputs("\033\1332F", stdout);
                     }
