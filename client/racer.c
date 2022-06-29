@@ -9,18 +9,26 @@
 
 // You should have received a copy of the GNU General Public License along with /CubedProgrammer/TypeRacer. If not, see <https://www.gnu.org/licenses/>.
 
+#ifndef _WIN32
 #include<arpa/inet.h>
 #include<netdb.h>
 #include<pthread.h>
+#endif
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
+#ifndef _WIN32
 #include<sys/ioctl.h>
 #include<sys/select.h>
 #include<sys/socket.h>
 #include<termios.h>
+#endif
 #include<time.h>
+#ifdef _WIN32
+#include<windows.h>
+#else
 #include<unistd.h>
+#endif
 #include"rd.h"
 #include"typing.h"
 #define PORT 6971
@@ -48,6 +56,11 @@ int main(int argl, char *argv[])
     puts("In this game, you will race against others to see who can type a paragraph the fastest.");
     setvbuf(stdout, NULL, _IONBF, 0);
 #ifdef _WIN32
+    HANDLE hand = GetStdHandle(STD_OUTPUT_HANDLE);
+    DWORD cm;
+    GetConsoleMode(hand, &cm);
+    cm |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+    SetConsoleMode(hand, cm);
 #else
     struct termios old, curr;
     tcgetattr(STDIN_FILENO, &old);
@@ -65,7 +78,11 @@ int main(int argl, char *argv[])
     const char *host = argv[1];
     char paragraph[5041];
     char utbuf[5041];
+#ifdef _WIN32
+    SOCKET sock = INVALID_SOCKET;
+#else
     int sock = -1;
+#endif
     char conmsg[] = "Enter host name of server you wish to connect to: ";
     if(host == NULL)
     {
@@ -84,7 +101,11 @@ int main(int argl, char *argv[])
     else
     {
         sock = connect_client(host);
+#ifdef _WIN32
+        if(sock == INVALID_SOCKET)
+#else
         if(sock == -1)
+#endif
             goto nohost;
     }
     puts(host);

@@ -11,7 +11,11 @@
 
 #include<stdio.h>
 #include<string.h>
+#ifdef _WIN32
+#include<conio.h>
+#else
 #include<unistd.h>
+#endif
 #include"rd.h"
 char rdcbuf[4];
 int rdcbufcnt;
@@ -111,6 +115,19 @@ int rd(void)
     int ch;
     char cbuf[4];
 #ifdef _WIN32
+    char tmp = getch();
+    switch(tmp)
+    {
+        case-64:
+            ch = 033;
+            tmp = getch();
+            break;
+        case 8:
+            ch = 0177;
+            break;
+        default:
+            ch = tmp;
+    }
 #else
     if(rdcbufcnt != 0)
     {
