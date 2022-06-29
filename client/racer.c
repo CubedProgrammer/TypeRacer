@@ -25,6 +25,8 @@
 #endif
 #include<time.h>
 #ifdef _WIN32
+#pragma comment(lib, "ws2_32.lib")
+#include<winsock2.h>
 #include<windows.h>
 #else
 #include<unistd.h>
@@ -37,6 +39,8 @@
 #ifdef _WIN32
 #define gch getch()
 #define mssleep(ms)Sleep(ms)
+#define GETCHR(filedes, var)recv(filedes, &var, sizeof(var), 0);
+#define PUTCHR(filedes, var)send(filedes, &var, sizeof(var), 0);
 #else
 #define GETCHR(filedes, var)read(filedes, &var, sizeof var)
 #define PUTCHR(filedes, var)write(filedes, &var, sizeof var)
@@ -46,9 +50,16 @@ int connect_client(const char *host);
 void *await_begin(void *arg);
 int term_width(void)
 {
+#ifdef _WIN32
+    HANDLE hand = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_SCREEN_BUFFER_INFO conbuf;
+    GetConsoleScreenBufferInfo(hand, &conbuf);
+    return conbuf.srWindow.X;
+#else
     struct winsize sz;
     ioctl(STDIN_FILENO, TIOCGWINSZ, &sz);
     return sz.ws_col;
+#endif
 }
 int main(int argl, char *argv[])
 {
@@ -56,6 +67,13 @@ int main(int argl, char *argv[])
     puts("In this game, you will race against others to see who can type a paragraph the fastest.");
     setvbuf(stdout, NULL, _IONBF, 0);
 #ifdef _WIN32
+    // Microsoft socket data
+    WSADATA mssd;
+    if(WSAStartup(MAKEWORD(2, 2), &mssd))
+    {
+        puts("WSAStartup failed miserably.");
+        return-1;
+    }
     HANDLE hand = GetStdHandle(STD_OUTPUT_HANDLE);
     DWORD cm;
     GetConsoleMode(hand, &cm);
@@ -342,7 +360,9 @@ int main(int argl, char *argv[])
     PUTCHR(sock, msgt);
     close(sock);
     end:
-#ifndef _WIN32
+#ifdef _WIN32
+    WSACleanup();
+#else
     tcsetattr(STDIN_FILENO, TCSANOW, &old);
 #endif
     puts("Thank you for playing.");
@@ -357,18 +377,37 @@ void *await_begin(void *arg)
     PUTCHR(sock, c);
     return NULL;
 }
-int connect_client(const char *host)
+#ifdef _WIN32
+SOCKET
+#else
+int
+#endif
+connect_client(const char *host)
 {
-    int sock = socket(AF_INET, SOCK_STREAM, 0);
+#ifdef _WIN32
+    SOCKET sock
+#else
+    int sock
+#endif
+    = socket(AF_INET, SOCK_STREAM, 0);
+#ifdef _WIN32
+    if(sock != INVALID_SOCKET)
+#else
     if(sock > 0)
+#endif
     {
         struct sockaddr_in sai, *saip = &sai;
         sai.sin_family = AF_INET;
         sai.sin_port = htons(PORT);
         inet_aton(host, &sai.sin_addr);
         int succ = connect(sock, (struct sockaddr *)saip, sizeof sai);
+#ifdef _WIN32
+        if(succ == SOCKET_ERROR)
+            sock = INVALID_SOCKET;
+#else
         if(succ != 0)
             sock = -1;
+#endif
         else
         {
         }

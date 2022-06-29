@@ -13,7 +13,11 @@
 #include<string.h>
 #include"typing.h"
 #include"rd.h"
+#ifdef _WIN32
+void type_race(void *arg)
+#else
 void *type_race(void *arg)
+#endif
 {
     struct typebuf *tp = arg, tbuf = *tp;
     char *buf = tbuf.cbuf;
@@ -55,5 +59,7 @@ void *type_race(void *arg)
         buf[ind] = 030;
         buf[ind + 1] = '\0';
     }
+#ifndef _WIN32
     return NULL;
+#endif
 }

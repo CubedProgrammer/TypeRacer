@@ -118,11 +118,33 @@ int rd(void)
     char tmp = getch();
     switch(tmp)
     {
-        case-64:
-            ch = 033;
-            tmp = getch();
+        case'\r':
+            ch = '\n';
             break;
-        case 8:
+        case-64:
+            tmp = getch();
+            switch(tmp)
+            {
+                case 0117:
+                    ch = 0x5b46;
+                    break;
+                case 0107:
+                    ch = 0x5b48;
+                    break;
+                case 0123:
+                    ch = 0x5b337e;
+                    break;
+                case 0115:
+                    ch = 0x5b43;
+                    break;
+                case 0113:
+                    ch = 0x5b44;
+                    break;
+                default:
+                    ring;
+            }
+            break;
+        case'\b':
             ch = 0177;
             break;
         default:
