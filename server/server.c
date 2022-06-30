@@ -96,7 +96,13 @@ void *handle_client(void *arg)
             if(race->status == 3)
                 msgt = 19;
             else
+            {
                 msgt = 17;
+                if(race->status == 4)
+                    log_printf("Player %s was too late.\n", name);
+                else
+                    log_printf("Player %s was way too late.\n", name);
+            }
             PUTCHR(cfd, msgt);
             if(msgt == 19)
             {
@@ -235,6 +241,7 @@ void *handle_client(void *arg)
             log_printf("Player %s could not join room 0x%x\n", name, track);
         }
     }
+    log_printf("Socket %d is about to reach the end.\n", cfd);
     tv.tv_sec = 1800;
     tv.tv_usec = 0;
     FD_ZERO(fdsp);
@@ -288,11 +295,17 @@ void *accept_clients(void *arg)
             {
                 puts("Listening for connections now");
                 pthread_t pth;
-                int cfd;
-                for(;;)
+                int cfd = 1;
+                for(; cfd > 0;)
                 {
                     cfd = accept(s, &aca.sau.sa, &aca.slen);
-                    pthread_create(&pth, NULL, handle_client, &cfd);
+                    log_printf("Accepted a client on file descriptor %d.\n", cfd);
+                    if(cfd > 100)
+                        log_puts("Accepted file descriptor exceeded 100.\n");
+                    if(cfd < 0)
+                        log_printf("Accepting client failed, %d is errno.\n", errno);
+                    else
+                        pthread_create(&pth, NULL, handle_client, &cfd);
                 }
             }
             else
@@ -301,6 +314,7 @@ void *accept_clients(void *arg)
         else
             fputs("Binding socket failed\n", stderr);
     }
+    exit(1);
     return NULL;
 }
 int main(int argl, char *argv[])

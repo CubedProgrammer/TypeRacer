@@ -14,16 +14,20 @@
 #include<netdb.h>
 #include<pthread.h>
 #endif
+
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
+
 #ifndef _WIN32
 #include<sys/ioctl.h>
 #include<sys/select.h>
 #include<sys/socket.h>
 #include<termios.h>
 #endif
+
 #include<time.h>
+
 #ifdef _WIN32
 #pragma comment(lib, "ws2_32.lib")
 #include<winsock2.h>
@@ -31,11 +35,14 @@
 #else
 #include<unistd.h>
 #endif
+
 #include"rd.h"
 #include"typing.h"
+
 #define PORT 6971
 #define BARLEN (cols - maxnamlen - 2)
 #define MAXBARLEN 240
+
 #ifdef _WIN32
 #define gch getch()
 #define mssleep(ms)Sleep(ms)
@@ -46,6 +53,7 @@
 #define PUTCHR(filedes, var)write(filedes, &var, sizeof var)
 #define mssleep(ms)usleep((ms) * 1000)
 #endif
+
 int connect_client(const char *host);
 void *await_begin(void *arg);
 int term_width(void)
@@ -151,7 +159,19 @@ int main(int argl, char *argv[])
     PUTCHR(sock, trackn);
     if(trackn == 0)
     {
-        for(GETCHR(sock, msgt); msgt != 53; GETCHR(sock, msgt));
+        msgt = 31;
+        while(msgt != 53)
+        {
+            FD_ZERO(fdsp);
+            FD_SET(sock, fdsp);
+            tv.tv_sec = 5;
+            tv.tv_usec = 0;
+            ready = select(sock + 1, fdsp, NULL, NULL, tvp);
+            if(ready)
+                GETCHR(sock, msgt);
+            else
+                puts("Server took too long to respond.");
+        }
         GETCHR(sock, trackn);
         trackn = ntohl(trackn);
         printf("Room is %08x\n", trackn);
