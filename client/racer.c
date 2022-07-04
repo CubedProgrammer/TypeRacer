@@ -95,10 +95,10 @@ int main(int argl, char *argv[])
     tcsetattr(STDIN_FILENO, TCSANOW, &curr);
 #endif
     int succ = 0;
-    if(term_width() < 70)
+    if(term_width() < 100)
     {
         succ = 1;
-        fputs("\033\13331mTerminal width must be greater than 69 characters.\033\133m\n", stderr);
+        fputs("\033\13331mTerminal width must be greater than 99 characters.\033\133m\n", stderr);
         goto end;
     }
     const char *host = argv[1];
@@ -142,6 +142,7 @@ int main(int argl, char *argv[])
     char unsigned msgt = strlen(name);
     PUTCHR(sock, msgt);
     write(sock, name, msgt);
+    size_t wc;
     uint32_t trackn;
     char trackbuf[9];
     char progbar[MAXBARLEN + 1];
@@ -231,12 +232,16 @@ int main(int argl, char *argv[])
                     plen = ntohs(plen);
                     read(sock, paragraph, plen);
                     paragraph[plen] = '\0';
+                    wc = 1;
+                    for(const char *it = paragraph; *it != '\0'; ++it)
+                        wc += *it == ' ';
                     struct typebuf tbuf;
                     tbuf.cbuf = utbuf;
                     utbuf[0] = '\0';
                     tbuf.sz = sizeof utbuf;
                     tbuf.para = paragraph;
                     tbuf.plen = plen;
+                    tbuf.ccnt = 0;
                     pthread_t pth;
                     pthread_create(&pth, NULL, type_race, &tbuf);
                     time_t curr = time(NULL), end = curr + 60;
@@ -294,8 +299,8 @@ int main(int argl, char *argv[])
                             }
                             else if(*ita == '\0')
                             {
-                                printf("\r\033\1331mCongradulations, you finished with %li seconds remaining.", end - curr);
-                                fwrite(spacebars, 1, cols - 64, stdout);
+                                printf("\r\033\1331mCongradulations, you finished with %li seconds remaining. Accuracy: %.1f%%. Speed: %.1f words/min.", end - curr, plen * 100.0 / tbuf.ccnt, wc * 60.0 / (curr + 60 - end));
+                                fwrite(spacebars, 1, cols - 100, stdout);
                                 putchar('\r');
                                 prog = plen;
                                 prog = htons(prog);

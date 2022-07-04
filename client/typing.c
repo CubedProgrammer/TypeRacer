@@ -44,6 +44,7 @@ void *type_race(void *arg)
                     {
                         buf[ind] = ch;
                         ++ind;
+                        ++tp->ccnt;
                         if(ind == tbuf.plen)
                             fini = strcmp(tbuf.para, buf) == 0;
                     }

@@ -12,11 +12,14 @@
 #ifndef Included_typing_h
 #define Included_typing_h
 #include<stddef.h>
+
 struct typebuf
 {
     size_t sz, plen;
+    size_t ccnt;
     char *cbuf;
     const char *para;
 };
 void *type_race(void *arg);
+
 #endif
