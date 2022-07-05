@@ -99,7 +99,7 @@ int main(int argl, char *argv[])
     if(term_width() < MIN_COLS)
     {
         succ = 1;
-        fprintf(stderr, "\033\13331mTerminal width must be greater than %i characters.\033\133m\n", MIN_COLS);
+        fprintf(stderr, "\033\13331mTerminal width must be greater than %i characters.\033\133m\n", MIN_COLS - 1);
         goto end;
     }
     const char *host = argv[1];
@@ -186,8 +186,11 @@ int main(int argl, char *argv[])
         if(trackn == 0)
         {
             puts("Press any key to begin the game...");
+#ifdef _WIN32
+#else
             pthread_t beginth;
             pthread_create(&beginth, NULL, await_begin, &sock);
+#endif
         }
         GETCHR(sock, msgt);
         int cols;
@@ -215,16 +218,16 @@ int main(int argl, char *argv[])
         else
         {
             printf("\033\133%zuF", plcnt + 4);
-            fputs("Game is beginning in 3                    \033\13320D", stdout);
+            fputs("Game is beginning in \033\13331m3\033\133m                    \033\13320D", stdout);
             mssleep(997);
-            fputs("\b2", stdout);
+            fputs("\033\13331m\b2\033\133m", stdout);
             mssleep(997);
-            fputs("\b1", stdout);
+            fputs("\033\13333m\b1\033\133m", stdout);
             GETCHR(sock, msgt);
             uint16_t plen;
             if(msgt == 19)
             {
-                puts("\b0");
+                puts("\033\13332m\b0\033\133m");
                 if(trackn != 0)
                     PUTCHR(sock, msgt);
                 GETCHR(sock, msgt);
@@ -253,8 +256,11 @@ int main(int argl, char *argv[])
                         putchar('\n');
                     }
                     printf("\033\133%zuF", plcnt + 3);
+#ifdef _WIN32
+#else
                     pthread_t pth;
                     pthread_create(&pth, NULL, type_race, &tbuf);
+#endif
                     time_t curr = time(NULL), end = curr + 60;
                     int tdiff, ltdiff = 60;
                     const char *ita, *itb;
@@ -265,7 +271,7 @@ int main(int argl, char *argv[])
                     for(; !quit && curr <= end; time(&curr))
                     {
                         tdiff = end - curr;
-                        printf("%d:%02d\n", tdiff / 60, tdiff % 60);
+                        printf("\033\1331m%d:%02d\033\133m            \033\13312D\n", tdiff / 60, tdiff % 60);
                         if(!finished)
                         {
                             cols = term_width();

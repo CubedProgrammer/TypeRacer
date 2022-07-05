@@ -20,6 +20,11 @@ struct typebuf
     char *cbuf;
     const char *para;
 };
-void *type_race(void *arg);
+#ifdef _WIN32
+void
+#else
+void *
+#endif
+type_race(void *arg);
 
 #endif
