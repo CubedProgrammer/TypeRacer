@@ -42,6 +42,7 @@
 #define PORT 6971
 #define BARLEN (cols - maxnamlen - 2)
 #define MAXBARLEN 240
+#define MIN_COLS 70
 
 #ifdef _WIN32
 #define gch getch()
@@ -95,10 +96,10 @@ int main(int argl, char *argv[])
     tcsetattr(STDIN_FILENO, TCSANOW, &curr);
 #endif
     int succ = 0;
-    if(term_width() < 100)
+    if(term_width() < MIN_COLS)
     {
         succ = 1;
-        fputs("\033\13331mTerminal width must be greater than 99 characters.\033\133m\n", stderr);
+        fprintf(stderr, "\033\13331mTerminal width must be greater than %i characters.\033\133m\n", MIN_COLS);
         goto end;
     }
     const char *host = argv[1];
@@ -135,7 +136,8 @@ int main(int argl, char *argv[])
             goto nohost;
     }
     puts(host);
-    char name[60], oname[60];
+    char name[60];
+    char oname[3600];
     fputs("Enter your name: ", stdout);
     rdln(name, sizeof name);
     printf("\nYour name is %s.\n", name);
@@ -196,12 +198,12 @@ int main(int argl, char *argv[])
             if(msgt == 37)
             {
                 GETCHR(sock, msgt);
-                read(sock, oname, msgt);
-                oname[msgt] = '\0';
+                read(sock, oname + 60 * plcnt, msgt);
+                oname[60 * plcnt + msgt] = '\0';
                 if(msgt > maxnamlen)
                     maxnamlen = msgt;
+                printf("\033\1331;33m%s\033\133m has entered the race.\n", oname + 60 * plcnt);
                 ++plcnt;
-                printf("%s has entered the race.\n", oname);
             }
             GETCHR(sock, msgt);
         }
@@ -242,6 +244,15 @@ int main(int argl, char *argv[])
                     tbuf.para = paragraph;
                     tbuf.plen = plen;
                     tbuf.ccnt = 0;
+                    fputs("\033\1333E", stdout);
+                    for(size_t i = 0; i < plcnt; ++i)
+                    {
+                        fwrite(spacebars, 1, maxnamlen + 1, stdout);
+                        putchar('\r');
+                        fputs(oname + i * 60, stdout);
+                        putchar('\n');
+                    }
+                    printf("\033\133%zuF", plcnt + 3);
                     pthread_t pth;
                     pthread_create(&pth, NULL, type_race, &tbuf);
                     time_t curr = time(NULL), end = curr + 60;
@@ -299,8 +310,8 @@ int main(int argl, char *argv[])
                             }
                             else if(*ita == '\0')
                             {
-                                printf("\r\033\1331mCongradulations, you finished with %li seconds remaining. Accuracy: %.1f%%. Speed: %.1f words/min.", end - curr, plen * 100.0 / tbuf.ccnt, wc * 60.0 / (curr + 60 - end));
-                                fwrite(spacebars, 1, cols - 100, stdout);
+                                printf("\r\033\1331mYou finished with %lis. Accuracy: %.1f%%. Speed: %.1f words/min.", end - curr, plen * 100.0 / tbuf.ccnt, wc * 60.0 / (curr + 60 - end));
+                                fwrite(spacebars, 1, cols - 70, stdout);
                                 putchar('\r');
                                 prog = plen;
                                 prog = htons(prog);
